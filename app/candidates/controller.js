@@ -2,60 +2,72 @@ const Candidate = require('./model');
 const config = require('../../config');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('../../utils/cloudinary')
 
 module.exports = {
   addImageCandidate: async (req, res, next) => {
-    try {
-      console.log(req.file);
-      // let filename = req.file.filename;
-
-      let tmp_path = req.file.path;
-      let originaExt =
-        req.file.originalname.split('.')[
-          req.file.originalname.split('.').length - 1
-        ];
-      let filename = req.file.filename + '.' + originaExt;
-      let target_path = path.resolve(
-        config.rootPath,
-        `public/uploads/${filename}`
-      );
-
-      const src = fs.createReadStream(tmp_path);
-      const dest = fs.createWriteStream(target_path);
-
-      src.pipe(dest);
-
-      src.on('end', async () => {
-        try {
-          const candidate = new Candidate({
-            avatar: filename,
-          });
-
-          await candidate.save();
-
-          res.status(201).json({ data: candidate });
-        } catch (err) {
-          if (err && err.name === 'ValidationError') {
-            return res.status(422).json({
-              error: 1,
-              message: err.message,
-              fields: err.errors,
-            });
-          }
-          next(err);
-        }
-      });
-      
-    } catch (err) {
-      if (err && err.name === 'ValidationError') {
-        return res.status(422).json({
-          error: 1,
-          message: err.message,
-          fields: err.errors,
-        });
+    cloudinary.uploader.upload(req.file.path, function(err, result) {
+      if (err) {
+        console.log(err)
+        return res.status(500).json({ error: true, message: err.message });
       }
-      next(err);
-    }
+
+      res.status(201).json({
+        data: result
+      })
+    })
+    // try {
+      // console.log(req.file);
+      // // let filename = req.file.filename;
+
+      // let tmp_path = req.file.path;
+      // console.log("🚀 ~ addImageCandidate: ~ tmp_path:", tmp_path)
+      // let originaExt =
+      //   req.file.originalname.split('.')[
+      //     req.file.originalname.split('.').length - 1
+      //   ];
+      // let filename = req.file.filename + '.' + originaExt;
+      // let target_path = path.resolve(
+      //   config.rootPath,
+      //   `public/uploads/${filename}`
+      // );
+
+      // const src = fs.createReadStream(tmp_path);
+      // const dest = fs.createWriteStream(target_path);
+
+      // src.pipe(dest);
+
+      // src.on('end', async () => {
+      //   try {
+      //     const candidate = new Candidate({
+      //       avatar: filename,
+      //     });
+
+      //     await candidate.save();
+
+      //     res.status(201).json({ data: candidate });
+      //   } catch (err) {
+      //     if (err && err.name === 'ValidationError') {
+      //       return res.status(422).json({
+      //         error: 1,
+      //         message: err.message,
+      //         fields: err.errors,
+      //       });
+      //     }
+      //     next(err);
+      //   }
+      // });
+      
+    // } catch (err) {
+    //   if (err && err.name === 'ValidationError') {
+    //     return res.status(422).json({
+    //       error: 1,
+    //       message: err.message,
+    //       fields: err.errors,
+    //     });
+    //   }
+    //   next(err);
+    // }
   },
   addCandidate: async (req, res, next) => {
     try {
