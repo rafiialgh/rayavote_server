@@ -1,7 +1,7 @@
 const Voter = require('./model');
 const path = require('path');
 const fs = require('fs');
-const {emailGmail, appPassword, jwtKey } = require('../../config');
+const { emailGmail, appPassword, jwtKey } = require('../../config');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
@@ -55,7 +55,13 @@ module.exports = {
   // },
   signup: async (req, res, next) => {
     try {
-      const { email, password, electionAddress, electionName, electionDescription } = req.body;
+      const {
+        email,
+        password,
+        electionAddress,
+        electionName,
+        electionDescription,
+      } = req.body;
       console.log(req.body);
 
       const companyId = req.company?.id;
@@ -82,26 +88,37 @@ module.exports = {
 
       await voter.save();
 
-      try {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
-          auth: {
-            user: emailGmail,
-            pass: appPassword,
-          },
-        });
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: emailGmail,
+          pass: appPassword,
+        },
+      });
 
-        const mailOptions = {
-          from: {
-            name: 'Raya Vote',
-            address: emailGmail,
-          },
-          to: voter.email,
-          subject: `Kamu terdaftar di Pemilihan ${electionName}`,
-          html: `
+      await new Promise((resolve, reject) => {
+        transporter.verify(function (error, success) {
+          if (error) {
+            console.log(error);
+            reject(error);
+          } else {
+            console.log('Server is ready to take our messages');
+            resolve(success);
+          }
+        });
+      });
+
+      const mailOptions = {
+        from: {
+          name: 'Raya Vote',
+          address: emailGmail,
+        },
+        to: voter.email,
+        subject: `Kamu terdaftar di Pemilihan ${electionName}`,
+        html: `
           <h1>Kamu terdaftar sebagai pemilih</h1>
           <br>Informasi pemilihan:
           <br><b>${electionName}</b>
@@ -112,14 +129,20 @@ module.exports = {
           <br>Silahkan kunjungi website di bawah untuk memilih:
           <br><a href="http://localhost:3000/">Click here to visit the website</a>
           `,
-        };
+      };
 
-        transporter.sendMail(mailOptions);
-        
-      } catch (error) {
-        console.error('Error sending email:', error);
-        return res.status(500).json({ message: 'Failed to send email' });
-      }
+      await new Promise((resolve, reject) => {
+        // send mail
+        transporter.sendMail(mailData, (err, info) => {
+          if (err) {
+            console.error(err);
+            reject(err);
+          } else {
+            console.log(info);
+            resolve(info);
+          }
+        });
+      });
 
       delete voter._doc.password;
 
@@ -231,7 +254,7 @@ module.exports = {
       const { id } = req.params;
       const { email, password, electionName, electionDescription } = req.body;
 
-      console.log(id, email, password, electionName, electionDescription)
+      console.log(id, email, password, electionName, electionDescription);
 
       const voter = await Voter.findById(id);
 
@@ -288,7 +311,6 @@ module.exports = {
         };
 
         transporter.sendMail(mailOptions);
-        
       } catch (error) {
         console.error('Error sending email:', error);
         return res.status(500).json({ message: 'Failed to send email' });
