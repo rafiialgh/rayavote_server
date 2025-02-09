@@ -1,7 +1,6 @@
 const multer = require('multer');
 const path = require('path');
 
-// Konfigurasi penyimpanan file
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'public/uploads'); // Folder penyimpanan file
@@ -12,7 +11,6 @@ const storage = multer.diskStorage({
   },
 });
 
-// Filter untuk memastikan hanya menerima file tertentu (opsional)
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
@@ -25,6 +23,6 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-}).single('avatar'); // Pastikan nama field di sini sesuai dengan nama field di Postman
+}).single('avatar');
 
 module.exports = upload;
