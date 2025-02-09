@@ -25,6 +25,18 @@ module.exports = {
         },
       });
 
+      await new Promise((resolve, reject) => {
+        transporter.verify(function (error, success) {
+          if (error) {
+            console.log(error);
+            reject(error);
+          } else {
+            console.log('Server is ready to take our messages');
+            resolve(success);
+          }
+        });
+      });
+
       for (const voter of voters) {
         try {
           const mailOptions = {
@@ -41,7 +53,18 @@ module.exports = {
             `,
           };
 
-          await transporter.sendMail(mailOptions);
+          await new Promise((resolve, reject) => {
+            // send mail
+            transporter.sendMail(mailOptions, (err, info) => {
+              if (err) {
+                console.error(err);
+                reject(err);
+              } else {
+                console.log(info);
+                resolve(info);
+              }
+            });
+          });
           console.log(`Email sent to ${voter.email}`);
         } catch (emailError) {
           console.error(`Failed to send email to ${voter.email}:`, emailError);

@@ -127,7 +127,7 @@ module.exports = {
           <br>Email kamu: ${voter.email}
           <br>Password kamu: ${voter.password}
           <br>Silahkan kunjungi website di bawah untuk memilih:
-          <br><a href="http://localhost:3000/">Click here to visit the website</a>
+          <br><a href="https://rayavote-client.vercel.app/">Click here to visit the website</a>
           `,
       };
 
@@ -278,26 +278,37 @@ module.exports = {
         { new: true, runValidators: true }
       );
 
-      try {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
-          auth: {
-            user: emailGmail,
-            pass: appPassword,
-          },
-        });
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: emailGmail,
+          pass: appPassword,
+        },
+      });
 
-        const mailOptions = {
-          from: {
-            name: 'Raya Vote',
-            address: emailGmail,
-          },
-          to: voter.email,
-          subject: `Kamu terdaftar di Pemilihan ${electionName}`,
-          html: `
+      await new Promise((resolve, reject) => {
+        transporter.verify(function (error, success) {
+          if (error) {
+            console.log(error);
+            reject(error);
+          } else {
+            console.log('Server is ready to take our messages');
+            resolve(success);
+          }
+        });
+      });
+
+      const mailOptions = {
+        from: {
+          name: 'Raya Vote',
+          address: emailGmail,
+        },
+        to: voter.email,
+        subject: `Kamu terdaftar di Pemilihan ${electionName}`,
+        html: `
           <h1>Kamu terdaftar sebagai pemilih</h1>
           <br>Informasi pemilihan kamu <b>telah diupdate</b>:
           <br><b>${electionName}</b>
@@ -306,15 +317,22 @@ module.exports = {
           <br>Email kamu: ${voter.email}
           <br>Password kamu: ${voter.password}
           <br>Silahkan kunjungi website di bawah untuk memilih:
-          <br><a href="http://localhost:3000/">Click here to visit the website</a>
+          <br><a href="https://rayavote-client.vercel.app/">Click here to visit the website</a>
           `,
-        };
+      };
 
-        transporter.sendMail(mailOptions);
-      } catch (error) {
-        console.error('Error sending email:', error);
-        return res.status(500).json({ message: 'Failed to send email' });
-      }
+      await new Promise((resolve, reject) => {
+        // send mail
+        transporter.sendMail(mailOptions, (err, info) => {
+          if (err) {
+            console.error(err);
+            reject(err);
+          } else {
+            console.log(info);
+            resolve(info);
+          }
+        });
+      });
 
       res.status(200).json({
         message: 'Voter berhasil diupdate',
