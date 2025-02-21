@@ -56,8 +56,8 @@ module.exports = {
   signup: async (req, res, next) => {
     try {
       const {
+        name,
         email,
-        password,
         electionAddress,
         electionName,
         electionDescription,
@@ -71,20 +71,35 @@ module.exports = {
       }
       console.log(companyId);
 
-      const existingVoter = await Voter.findOne({ email });
+      const existingVoter = await Voter.findOne({ email, electionAddress });
 
       if (existingVoter) {
         return res.status(400).json({
-          message: 'Voter with this email already exists.',
+          message:
+            'Voter with this email is already registered for this election.',
         });
       }
 
       const voter = new Voter({
+        name,
         email,
-        password,
         electionAddress,
         companyId,
       });
+
+      await voter.save();
+
+      const token = jwt.sign(
+        {
+          voterId: voter._id,
+          name: voter.name,
+          email: voter.email,
+          electionAddress,
+        },
+        jwtKey
+      );
+
+      voter.token = token;
 
       await voter.save();
 
@@ -124,8 +139,10 @@ module.exports = {
           <br><b>${electionName}</b>
           <br>${electionDescription}
           <br>
+          <br>Nama kamu: ${voter.name}
           <br>Email kamu: ${voter.email}
-          <br>Password kamu: ${voter.password}
+          <br>Gunakan token dibawah untuk login: 
+          <br><b>${token}</b>
           <br>Silahkan kunjungi website di bawah untuk memilih:
           <br><a href="https://rayavote-client.vercel.app/">Click here to visit the website</a>
           `,
@@ -144,7 +161,7 @@ module.exports = {
         });
       });
 
-      delete voter._doc.password;
+      // delete voter._doc.password;
 
       return res.status(201).json({
         message: 'Voter added successfully',
@@ -163,25 +180,29 @@ module.exports = {
   },
   signin: async (req, res, next) => {
     try {
-      const { email, password } = req.body;
+      const { token } = req.body;
 
-      const voter = await Voter.findOne({ email: email });
+      const decoded = jwt.verify(token, jwtKey);
+
+      const voter = await Voter.findOne({ _id: decoded.voterId, token });
+
       if (!voter) {
         return res.status(403).json({
-          message: 'Email salah.',
+          message: 'Token salah.',
         });
       }
 
-      if (voter.password !== password) {
-        return res.status(403).json({
-          message: 'Password salah.',
-        });
-      }
+      // if (voter.password !== password) {
+      //   return res.status(403).json({
+      //     message: 'Password salah.',
+      //   });
+      // }
 
       const tokenVoter = jwt.sign(
         {
           voter: {
             id: voter.id,
+            name: voter.name,
             email: voter.email,
             electionAddress: voter.electionAddress,
           },
@@ -252,9 +273,9 @@ module.exports = {
   editVoter: async (req, res) => {
     try {
       const { id } = req.params;
-      const { email, password, electionName, electionDescription } = req.body;
+      const { email, name, electionName, electionDescription } = req.body;
 
-      console.log(id, email, password, electionName, electionDescription);
+      console.log(id, email, name, electionName, electionDescription);
 
       const voter = await Voter.findById(id);
 
@@ -272,11 +293,31 @@ module.exports = {
       //   hashedPassword = await bcrypt.hash(password, salt);
       // }
 
-      const updatedVoter = await Voter.findByIdAndUpdate(
-        id,
-        { email, password },
-        { new: true, runValidators: true }
-      );
+      const existingToken = voter.token;
+
+      const isEmailChanged = email && email !== voter.email;
+
+      let updatedFields = { email, name };
+
+      let newToken = existingToken;
+
+      if (isEmailChanged) {
+        newToken = jwt.sign(
+          {
+            voterId: voter._id,
+            name,
+            email,
+            electionAddress: voter.electionAddress,
+          },
+          jwtKey
+        );
+        updatedFields.token = newToken;
+      }
+
+      const updatedVoter = await Voter.findByIdAndUpdate(id, updatedFields, {
+        new: true,
+        runValidators: true,
+      });
 
       const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -310,12 +351,14 @@ module.exports = {
         subject: `Kamu terdaftar di Pemilihan ${electionName}`,
         html: `
           <h1>Kamu terdaftar sebagai pemilih</h1>
-          <br>Informasi pemilihan kamu <b>telah diupdate</b>:
+          <br>Informasi pemilihan kamu <b>telah diperbarui</b>:
           <br><b>${electionName}</b>
           <br>${electionDescription}
           <br>
+          <br>Nama kamu: ${voter.name}
           <br>Email kamu: ${voter.email}
-          <br>Password kamu: ${voter.password}
+          <br>Gunakan token dibawah untuk login: 
+          <br><b>${newToken}</b>
           <br>Silahkan kunjungi website di bawah untuk memilih:
           <br><a href="https://rayavote-client.vercel.app/">Click here to visit the website</a>
           `,

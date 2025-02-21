@@ -16,16 +16,19 @@ const voterSchema = new Mongoose.Schema({
     //   max: 20,
     //   required: true
     // },
+    name: {
+      type: String,
+      required: true
+    },
     email: {
       type: String,
       required: true,
-      unique: true,
       max: 50,
     },
-    password: {
-      type: String,
-      required: true,
-    },
+    // password: {
+    //   type: String,
+    //   required: true,
+    // },
     companyId: {
       type: Schema.Types.ObjectId,
       ref: 'Company',
@@ -38,6 +41,11 @@ const voterSchema = new Mongoose.Schema({
     electionAddress: {
       type: String,
       required: true
+    },
+    token: {
+      type: String,
+      required: true,
+      default: 'empty'
     }
     // avatar: {
     //   type: String,
